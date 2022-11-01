@@ -1,0 +1,7 @@
+{
+  "name": "PictureProj",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
