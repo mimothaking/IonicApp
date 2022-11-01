@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera'
 import { Filesystem } from '@capacitor/filesystem';
 import { Directory } from '@capacitor/filesystem/dist/esm/definitions';
-import { Platform } from '@ionic/angular';
+import { async } from '@firebase/util';
+import { LoadingController, Platform } from '@ionic/angular';
+import { FileInfo } from '@capacitor/filesystem/dist/esm/definitions';
 
 const IMAGE_DIR = 'stored-images';
 
@@ -18,11 +20,50 @@ interface LocalFile {
   styleUrls: ['home.page.scss'],
 })
 export class HomePage {
-
-  constructor(private platform: Platform) {}
+  images: LocalFile[] = [];
+  constructor(private platform: Platform, private loadingCtrl: LoadingController) {}
 
   async ngOninit() {
+    this.loadFiles();
+  }
 
+  async loadFiles(){
+    this.images = [];
+    const loading = await this.loadingCtrl.create({
+      message: 'loading data...',
+    })
+    await loading.present();
+    Filesystem.readdir({
+      directory: Directory.Data,
+      path: IMAGE_DIR
+    }).then(result => {
+      console.log('HERE: ', result);
+      this.loadingFileData(result.files)
+    }, async err => {
+      console.log('err:', err);
+      await Filesystem.mkdir({
+        directory: Directory.Data,
+        path: IMAGE_DIR
+      });
+    }).then(_ =>{
+      loading.dismiss();
+    })
+  }
+
+  async loadingFileData(fileNames: string[]){
+    for (let f of fileNames){
+      const filePath = `${IMAGE_DIR}/${f}`;
+
+      const readFile = await Filesystem.readFile({
+        directory: Directory.Data,
+        path: filePath
+      });
+      this.images.push({
+        name: f,
+        path: filePath,
+        data: `data:image/jpeg;base64,${readFile.data}`
+      });
+    }
   }
 
   async selectImage() {
@@ -44,17 +85,25 @@ export class HomePage {
       data: base64Data
     });
     console.log('saved', savedFile);
+    this.loadFiles();
   }
 
-  private async readAsBase64(photo: Photo) {
-    
-    const response = await fetch(photo.webPath!);
-    const blob = await response.blob();
+  async readAsBase64(photo: Photo) {
+    if (this.platform.is('hybrid')) {
+      const file = await Filesystem.readFile({
+        path: photo.path
+      });
 
-    return await this.convertBlobToBase64(blob) as string;
+      return file.data;
+    }
+    else {
+      const response = await fetch(photo.webPath);
+      const blob = await response.blob();
+
+      return await this.convertBlobToBase64(blob) as string;
+    }
   }
-
-  private convertBlobToBase64 = (blob: Blob) => new Promise((resolve, reject) => {
+  convertBlobToBase64 = (blob: Blob) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
     reader.onload = () => {
@@ -62,5 +111,13 @@ export class HomePage {
     };
     reader.readAsDataURL(blob);
   });
+
+  startUpload(){
+
+  }
+
+  deleteImage(){
+
+  }
 
 }
