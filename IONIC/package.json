@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@angular/fire": "^7.4.1",
+    "@capacitor/camera": "^4.1.2",
+    "@capacitor/filesystem": "^4.1.2",
+    "@ionic/pwa-elements": "^3.1.1",
+    "firebase": "^9.12.1"
+  }
+}
